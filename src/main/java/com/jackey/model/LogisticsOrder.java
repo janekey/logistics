@@ -1,4 +1,4 @@
-package com.janekey.model;
+package com.jackey.model;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -9,8 +9,8 @@ import java.util.Date;
 
 /**
  *
- * @author janekey
- * @version $Id: LogisticsOrder.java, v 0.1 2018-03-11 下午1:46 janekey Exp $
+ * @author jackey
+ * @version $Id: LogisticsOrder.java, v 0.1 2018-03-11 下午1:46 jackey Exp $
  */
 @Entity
 public class LogisticsOrder {
