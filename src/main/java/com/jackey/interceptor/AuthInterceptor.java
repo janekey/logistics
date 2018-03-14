@@ -1,10 +1,15 @@
 package com.jackey.interceptor;
 
+import com.alibaba.fastjson.JSON;
+import com.jackey.util.Const;
+import com.jackey.util.Result;
+import com.jackey.util.ResultEnum;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 /**
  *
@@ -15,19 +20,31 @@ public class AuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) throws Exception {
-        //在请求处理之前进行调用
+        Object login = request.getSession().getAttribute(Const.SESSION_LOGIN_KEY);
+        /*
+        if (login instanceof String && Const.LOGIN_VALUE.equals(login)) {
+            return true;
+        } else {
+            Result result = new Result();
+            PrintWriter out = null;
+            try {
+                response.setCharacterEncoding("UTF-8");
+                response.setContentType("application/json; charset=UTF-8");
+
+                out = response.getWriter();
+                result.setResult(ResultEnum.NOT_LOGIN);
+                out.append(JSON.toJSONString(result));
+            } catch (IOException e) {
+
+            } finally {
+                if (out != null) {
+                    out.close();
+                }
+            }
+            //在请求处理之前进行调用
+            return false;
+        }
+        */
         return true;
-    }
-
-    @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response,
-                           Object handler, ModelAndView modelAndView) throws Exception {
-        //请求处理之后进行调用，但是在视图被渲染之前
-    }
-
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-                                Object handler, Exception ex) throws Exception {
-        //在整个请求结束之后被调用，渲染了对应的视图之后
     }
 }

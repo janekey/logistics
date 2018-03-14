@@ -2,8 +2,10 @@ package com.jackey.controller;
 
 import com.jackey.model.LogisticsOrder;
 import com.jackey.dao.OrderRepository;
+import com.jackey.model.OrderVO;
 import com.jackey.util.CommonException;
 import com.jackey.util.Invoke;
+import com.jackey.util.OrderConverter;
 import com.jackey.util.PageResult;
 import com.jackey.util.Result;
 import com.jackey.util.ResultEnum;
@@ -14,12 +16,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,7 +42,7 @@ import java.util.Optional;
 @Controller
 public class OrderController extends AbstractController {
 
-    private static String   format = "((19|20)[0-9]{2})/(0?[1-9]|1[012])/(0?[1-9]|[12][0-9]|3[01])";
+    private static String   date_format = "((19|20)[0-9]{2})/(0?[1-9]|1[012])/(0?[1-9]|[12][0-9]|3[01])";
 
     @Autowired
     private OrderRepository orderRepository;
@@ -47,7 +54,13 @@ public class OrderController extends AbstractController {
         return process(new Invoke<LogisticsOrder>() {
             @Override
             public void paramValidate() {
-                if (!date.matches(format)) {
+                LOGGER.info("save:{0},{1},{2},{3},{4},{5},{6},{7}", id, orderNo, date,
+                    destProvince, weight, firstPrice, continuePrice, totalPrice);
+                if (StringUtil.isEmpty(orderNo) || StringUtil.isEmpty(date)
+                    || StringUtil.isEmpty(destProvince)) {
+                    throw new CommonException(ResultEnum.PARAM_ERROR);
+                }
+                if (!date.matches(date_format)) {
                     throw new CommonException(ResultEnum.DATE_INVALID);
                 }
             }
@@ -90,6 +103,7 @@ public class OrderController extends AbstractController {
         return process(new Invoke<Object>() {
             @Override
             public Object invoke() {
+                LOGGER.info("delete:{0}", id);
                 if (!orderRepository.existsById(id)) {
                     throw new CommonException(ResultEnum.ID_NOT_EXIST);
                 }
@@ -100,14 +114,12 @@ public class OrderController extends AbstractController {
     }
 
     @RequestMapping(path = "/order/query")
-    public @ResponseBody PageResult<List<LogisticsOrder>> query(Long id, String orderNo,
-                                                                String dateStart, String dateEnd,
-                                                                String destProvince, Double weight,
-                                                                Double firstPrice,
-                                                                Double continuePrice,
-                                                                Double totalPrice, Integer page,
-                                                                Integer pageSize) {
-        PageResult<List<LogisticsOrder>> pageResult = new PageResult<>();
+    public @ResponseBody PageResult<List<OrderVO>> query(Long id, String orderNo, String dateStart,
+                                                         String dateEnd, String destProvince,
+                                                         Double weight, Double firstPrice,
+                                                         Double continuePrice, Double totalPrice,
+                                                         Integer page, Integer pageSize) {
+        PageResult<List<OrderVO>> pageResult = new PageResult<>();
         if (page == null || page <= 0) {
             page = 0;
         } else {
@@ -117,7 +129,7 @@ public class OrderController extends AbstractController {
             pageSize = 10;
         }
         try {
-            if (!StringUtil.isEmpty(dateStart) && !dateStart.matches(format)) {
+            if (!StringUtil.isEmpty(dateStart) && !dateStart.matches(date_format)) {
                 throw new CommonException(ResultEnum.DATE_INVALID);
             }
             if (!StringUtil.isEmpty(dateEnd) && !dateStart.matches(dateEnd)) {
@@ -182,7 +194,11 @@ public class OrderController extends AbstractController {
                     }, PageRequest.of(page, pageSize, Sort.by("id").descending()));
             long total = queryList.getTotalElements();
             if (total > 0) {
-                pageResult.setData(queryList.getContent());
+                List<OrderVO> list = new ArrayList<>();
+                for (LogisticsOrder order : queryList.getContent()) {
+                    list.add(OrderConverter.convertToVO(order));
+                }
+                pageResult.setData(list);
             }
             pageResult.setTotal(total);
             pageResult.setResult(ResultEnum.SUCCESS);
@@ -192,5 +208,46 @@ public class OrderController extends AbstractController {
             pageResult.setResult(ResultEnum.SYSTEM_ERROR);
         }
         return pageResult;
+    }
+
+    @RequestMapping(path = "/order/import")
+    public @ResponseBody Result importOrder(@RequestParam("file") MultipartFile file) {
+        return process(new Invoke<Object>() {
+
+            public void paramValidate() {
+                String fileName = file.getOriginalFilename();
+                if (StringUtil.isEmpty(fileName) || !fileName.matches(".*\\.csv")) {
+                    throw new CommonException(ResultEnum.ONLY_CSV);
+                }
+            }
+
+            public Object invoke() {
+                try {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(
+                        file.getInputStream()));
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        String[] lineColumns = line.split(",");
+                        if (lineColumns.length < 3) {
+                            LOGGER.info("忽略该行:" + line);
+                            continue;
+                        }
+
+                        String date = lineColumns[0];
+                        String orderNo = lineColumns[1];
+                        String destProvince = lineColumns[2];
+                        if (!date.matches(date_format)) {
+                            LOGGER.info("忽略该行:" + line);
+                            continue;
+                        }
+
+                        LOGGER.info("保存:" + date + "*" + orderNo + "*" + destProvince);
+                    }
+                } catch (IOException e) {
+                    LOGGER.error("import error", e);
+                }
+                return null;
+            }
+        });
     }
 }

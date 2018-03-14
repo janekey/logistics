@@ -17,6 +17,10 @@ public enum ResultEnum {
 
     ID_NOT_EXIST(103, "ID不存在"),
 
+    NOT_LOGIN(104, "未登录"),
+
+    ONLY_CSV(105, "仅支持CSV格式"),
+
     ;
 
     private int    resultCode;
