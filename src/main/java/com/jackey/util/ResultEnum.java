@@ -21,6 +21,8 @@ public enum ResultEnum {
 
     ONLY_CSV(105, "仅支持CSV格式"),
 
+    LOGIN_FAILED(106, "用户名密码校验失败"),
+
     ;
 
     private int    resultCode;
