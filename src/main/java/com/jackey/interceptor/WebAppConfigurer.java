@@ -15,6 +15,8 @@ public class WebAppConfigurer implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new AuthInterceptor()).addPathPatterns("/**")
-            .excludePathPatterns("/login").excludePathPatterns("/logout");
+            .excludePathPatterns("/login").excludePathPatterns("/logout").excludePathPatterns("/")
+            .excludePathPatterns("/**.html").excludePathPatterns("/**.css")
+            .excludePathPatterns("/**.js");
     }
 }
